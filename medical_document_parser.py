@@ -1,50 +1,81 @@
-import re
-import json
-from pathlib import Path
-import logging
-import logging.config
-import docx
-from docx.api import Document
-from handle_docx import HandleDocx
+import re #regex library
+import json #JSON library
+from pathlib import Path #to load the files
+import logging #logger
+import logging.config #logger parameters
+import docx #handling docx file
+from handle_docx import HandleDocx #custom class to extract text from docx file
 
 
+""" Importing logger at the top level. """
 
 logging.config.fileConfig('logging.conf')
 logger = logging.getLogger(__name__)
 
+
 class MedicalExtractor:
 
-    FIELDS_TO_EXTRACT = ['PATIENT_NAME','AGE','GENDER','MRN','DATE_OF_DISCHARGE','DOB','DIAGNOSIS']
+    """ Extracts demographic/medicine data from a medical document. """
+
+    REGEX_FILE_PATH = "regex_mapping.json" #regex file path
+    FIELDS_TO_EXTRACT = ['PATIENT_NAME','AGE','GENDER','MRN','DATE_OF_DISCHARGE','DOB','DIAGNOSIS'] #demographics field that we extract
 
     def __init__(self,**kwargs) -> None:
 
-        self.file_path = None
-        self.text = self.__docx_to_str(kwargs)
-        self.regex_file = Path("regex_mapping.json")
-        self.regex_mapper = dict()
-        with open(self.regex_file, "r") as read_file:
-            self.regex_mapper = json.load(read_file)
+        """ Initializing the Extractor by passing document. """
 
-        self.sections = self.__break_in_sections()
-        self.extracted_data = self.__extract_fields(MedicalExtractor.FIELDS_TO_EXTRACT)
-        self.medicines = self.__extract_medicines_regex()
+        self.file_path = None #file path of the document passed
+        self.text = self.__docx_to_str(kwargs) #text extracted from file/input string
+        self.regex_mapper = self.__load_regex() #load the regex from file
+        self.sections = self.__break_in_sections() #divide the text nto sections
+        self.extracted_data = self.__extract_fields(MedicalExtractor.FIELDS_TO_EXTRACT) #extract demographics data
+        self.medicines = self.__extract_medicines_regex() #extract medicines data
         
+    def __load_regex(self):
+
+        """ Loading the regex mapper file as a dictionary. """
+
+        regex_file = Path(MedicalExtractor.REGEX_FILE_PATH) #define the regex file
+        with open(regex_file, "r") as read_file: #open the regex file
+            mapper = json.load(read_file) #load the regex file as a dictionary
+        return mapper #return regex mapper
 
     
     def __docx_to_str(self,params:dict) -> str:
 
-        if 'input_str' in params.keys() and params['input_str'] is not None:
+        """ Extract data from the document and convert it to a string. """
+
+        if 'input_str' in params.keys() and params['input_str'] is not None: #need to parse string
             result = params['input_str']
-        elif 'input_file' in params.keys() and params['input_file'] is not None:
-            self.file_path = params['input_file']
-            result  = HandleDocx(docx.Document(params['input_file'])).load_data()
+        elif 'input_file' in params.keys() and params['input_file'] is not None: #need to parse a docx file
+            file_path = params['input_file'] #filepath to the file
+            result  = HandleDocx(docx.Document(params['input_file'])).load_data() #extract text from document
         
-        return result
+        return result #return extracted text
+    
+    def __break_in_sections(self):
+
+        """ Break the text into sections depending on the delimiter. """
+
+        delimiter = self.regex_mapper['DELIMITERS']['SECTION'] #delimiter on which the text will be broken into sections
+        whole_text = self.text #load text to temp variable
+        sections = re.split(delimiter,whole_text) #splitting the text on the delimiter
+        result = list()
+        for para in sections:
+            start = whole_text.find(para)
+            end = start + len(para)
+            result.append({'text':para,'span':(start,end)}) #indexing of the section
+        
+        logger.info(f'Tokenised Text : {result}')
+        return result #return a list of sections
 
     
     def __make_regex_pattern(self,nested:bool,keyword:str)->str:
-        search_dict = self.regex_mapper[keyword]
-        if nested:
+
+        """ Return a regex pattern for a given key from the regex mapper dictionary. """
+
+        search_dict = self.regex_mapper[keyword] #load the relevant regex dictionary
+        if nested: #if the pattern is nested
             searchkey = search_dict['SEARCH_KEY']
             delimiter = search_dict['SEARCH_DELIMITER']
             pattern = search_dict['SEARCH_PATTERN']
@@ -53,13 +84,15 @@ class MedicalExtractor:
             pattern = search_dict
             raw_string = r"{}".format(pattern)
         logger.info(f'keyword:{keyword}|pattern:{raw_string}')
-        regex_str = re.compile(raw_string,re.IGNORECASE|re.DOTALL|re.MULTILINE)
+        regex_str = re.compile(raw_string,re.IGNORECASE|re.DOTALL|re.MULTILINE) #add flags and make a regex pattern
         return regex_str
     
     def __get_params(self,key_to_search,is_nested=True):
 
+        """ Extract the required field from the text. """
+
         try:
-            searchstr = self.__make_regex_pattern(nested=is_nested,keyword=key_to_search)
+            searchstr = self.__make_regex_pattern(nested=is_nested,keyword=key_to_search) #fetch the regex pattern
         except:
             logger.critical(f"{key_to_search} not defined in regex_mapping.json")
             return "N/A"
@@ -68,76 +101,69 @@ class MedicalExtractor:
             retval = [each.groupdict() for each in re.finditer(searchstr,self.text)]
             logger.info('Regex caught {}:{}'.format(key_to_search,retval))
             retval = retval[0]
-            retval = retval[key_to_search]
+            retval = retval[key_to_search] #caught data for the key
         except Exception as e:
             logger.error(e)
             logger.critical('{} not found'.format(key_to_search))
             retval='N/A'
         
         logger.info("Param Returned:{} Value is :{}".format(key_to_search,retval))
-        return retval
+        return retval #returning value for the key
     
 
     def __extract_fields(self,fields_to_extract:list):
+
+        """ Driver function to extract all the fields. """
+
         result = dict()
         for keyword in fields_to_extract:
-            extracted_information = self.__get_params(keyword)
+            extracted_information = self.__get_params(keyword) #extract data for a key
             logger.info(f'{keyword}:{extracted_information}')
-            result[keyword]=extracted_information
+            result[keyword]=extracted_information #add fielfname,caught data to collection
         
         logger.info(f'Extracted data : {result}')
-        return result
+        return result #return all caught demographics data
     
     def __refine_medicines(self,medicines:list):
+
+        """ Cleanup the medicines extracted. """
+
         result = list()
         for index,medicine in enumerate(medicines):
-                medicine['COMMENTS'] = self.text[medicine['span'][1]:medicines[index+1]['span'][0]].strip() if index!=len(medicines)-1 else ''
+                medicine['COMMENTS'] = self.text[medicine['span'][1]:medicines[index+1]['span'][0]].strip() if index!=len(medicines)-1 else '' #adding uncategorized information as comments
                 del medicine['span']
-                if medicine['DOSAGE'] is None and medicine['FREQUENCY'] is not None:
+                if medicine['DOSAGE'] is None and medicine['FREQUENCY'] is not None: #making frequency and dosage into understandable format
                     temp = medicine['FREQUENCY'].split('-')
                     medicine['FREQUENCY'] = '-'.join(['1' if each!='0' else '0' for each in temp])
                     medicine['DOSAGE']=temp[0]
                 
-                medicine = { k:('N/A' if v is None else v.strip()) for k, v in medicine.items()}
+                medicine = { k:('N/A' if v is None else v.strip()) for k, v in medicine.items()} #uncaught data is returned as 'N/A'
                 result.append(medicine)
                     
-        return result
+        return result #return cleaned up medicines
 
     
     def __extract_medicines_regex(self):
+
+        """ Extract Medicines by regex method. """
+
         medicines = list()
-        medicine_pattern = self.__make_regex_pattern(keyword='MEDICINE',nested=False)
-        retval = re.finditer(medicine_pattern,self.text)
-        for match in retval:
+        medicine_pattern = self.__make_regex_pattern(keyword='MEDICINE',nested=False) #medicine regex pattern
+        retval = re.finditer(medicine_pattern,self.text) #match objects for all caught medicines
+        for match in retval: #structure medicine into list of dictionaries
             logger.info(match)
             span = match.span()
             medicine_data = match.groupdict()
             medicine_data['span']=span
             medicines.append(medicine_data)
         
-        medicines = self.__refine_medicines(medicines)
+        medicines = self.__refine_medicines(medicines) #cleanup up medicines
             
         logger.info(medicines)
-        return medicines
+        return medicines #returning medicines caught by regex
     
-    def __break_in_sections(self):
-        delimiter = self.regex_mapper['DELIMITERS']['SECTION']
-        whole_text = self.text
-        sections = re.split(delimiter,whole_text)
-        result = list()
-        for para in sections:
-            start = whole_text.find(para)
-            end = start + len(para)
-            result.append({'text':para,'span':(start,end)})
-        
-        logger.info(f'Tokenised Text : {result}')
-        return result
+
             
-
-
-
-
-
 
 if __name__=="__main__":
     file_path = "sample_files/JSS-2.docx"
