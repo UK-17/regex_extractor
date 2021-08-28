@@ -5,6 +5,7 @@ import logging #logger
 import logging.config #logger parameters
 import docx #handling docx file
 from handle_docx import HandleDocx #custom class to extract text from docx file
+from medicine_scraper import MedicineScraper
 
 
 """ Importing logger at the top level. """
@@ -124,6 +125,18 @@ class MedicalExtractor:
         logger.info(f'Extracted data : {result}')
         return result #return all caught demographics data
     
+    def __scrape_medicine(self,medicine:dict):
+
+        """ Getting brand name,generic name mapping for a medicine. """
+
+        name = medicine['NAME']
+        med_scraper = MedicineScraper(name) #scraping for a search string
+        brand_name,generic_name,isExact = med_scraper.return_data() #getting metadata
+        medicine['BRAND_NAME'] = brand_name
+        medicine['GENERIC_NAME'] = generic_name
+        del medicine['NAME']
+        return medicine
+    
     def __refine_medicines(self,medicines:list):
 
         """ Cleanup the medicines extracted. """
@@ -138,6 +151,7 @@ class MedicalExtractor:
                     medicine['DOSAGE']=temp[0]
                 
                 medicine = { k:('N/A' if v is None else v.strip()) for k, v in medicine.items()} #uncaught data is returned as 'N/A'
+                medicine = self.__scrape_medicine(medicine)
                 result.append(medicine)
                     
         return result #return cleaned up medicines
@@ -166,7 +180,7 @@ class MedicalExtractor:
             
 
 if __name__=="__main__":
-    file_path = "sample_files/JSS-2.docx"
+    file_path = "sample_files/angio.docx"
     ext_obj = MedicalExtractor(input_file=file_path)
 
 
