@@ -45,7 +45,7 @@ class HandleDocx:
         elif isinstance(parent, _Cell):
             parent_elm = parent._tc
         else:
-            raise ValueError("something's not right")
+            raise ValueError("Error while iterating through blocks.")
 
         for child in parent_elm.iterchildren():
             if isinstance(child, CT_P):

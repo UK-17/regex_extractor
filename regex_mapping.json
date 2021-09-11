@@ -3,6 +3,8 @@
       "SECTION":"\\n{2,}",
       "LINE":"\\n+"
    },
+   "MEDICINE_SECTION":"\\bTab\\s*\\.*|\\bSyp\\s*\\.*|\\bInj\\s*\\.*|\\bCap\\s*\\.*"
+   ,
     "MRN":{
        "SEARCH_KEY":"(?P<KEY>mrn|REG\\s*\\/\\s*IP\\s*NO|Hospital\\s*[\\s*\\-]?\\s*ID)",
        "SEARCH_DELIMITER":"\\s*(No|num|number)?\\s*\\n*:*",
