@@ -21,6 +21,7 @@ class MedicalExtractor:
 
     REGEX_FILE_PATH = "regex_mapping.json" #regex file path
     FIELDS_TO_EXTRACT = ['PATIENT_NAME','AGE','GENDER','MRN','DATE_OF_DISCHARGE','DOB','DIAGNOSIS'] #demographics field that we extract
+    DOCUMENT_SECTIONS = ['MEDICINE_SECTION','DEMOGRAPHICS'] #important sections of the document
 
     def __init__(self,**kwargs) -> None:
 
@@ -77,11 +78,17 @@ class MedicalExtractor:
     
     def __tag_sections(self,para:str):
 
-        pattern = self.__make_regex_pattern(nested=False,keyword='MEDICINE_SECTION')
-        if len(re.findall(pattern,para))>2:
-            return 'MEDICINES'
-        else:
-             return 'UNCATEGORIZED'
+        """ Tags sections based on certain keywords. """
+
+        sections = MedicalExtractor.DOCUMENT_SECTIONS
+        for section in sections:
+            tag = 'UNCATEGORIZED'
+            pattern = self.__make_regex_pattern(nested=False,keyword=section)
+            if len(re.findall(pattern,para))>2: 
+                tag = section
+                break
+        return tag
+
         
 
     
@@ -177,7 +184,7 @@ class MedicalExtractor:
 
         medicines = list()
         medicine_pattern = self.__make_regex_pattern(keyword='MEDICINE',nested=False) #medicine regex pattern
-        medicines_section = [each['text'] for each in self.sections if each['tag']=='MEDICINES'][0]
+        medicines_section = [each['text'] for each in self.sections if each['tag']=='MEDICINE_SECTION'][0]
         retval = re.finditer(medicine_pattern,medicines_section) #match objects for all caught medicines
         for match in retval: #structure medicine into list of dictionaries
             logger.info(match)
@@ -192,6 +199,9 @@ class MedicalExtractor:
         return medicines #returning medicines caught by regex
     
     def __return_extracted_data(self):
+
+        """ Returning output data in a categorized manner. """
+
         return {'demographics':self.demographics_data,'medicines':self.medicines}
     
 
