@@ -21,7 +21,7 @@ class MedicalExtractor:
 
     REGEX_FILE_PATH = "regex_mapping.json" #regex file path
     FIELDS_TO_EXTRACT = ['PATIENT_NAME','AGE','GENDER','MRN','DATE_OF_DISCHARGE','DOB','DIAGNOSIS'] #demographics field that we extract
-    DOCUMENT_SECTIONS = ['MEDICINE_SECTION','DEMOGRAPHICS'] #important sections of the document
+    DOCUMENT_SECTIONS = [('MEDICINE_SECTION',2),('DEMOGRAPHICS_SECTION',2),('EMERGENCY_SECTION',0)] #important sections of the document and threshold value for keywords to catch.
 
     def __init__(self,**kwargs) -> None:
 
@@ -32,6 +32,7 @@ class MedicalExtractor:
         self.regex_mapper = self.__load_regex() #load the regex from file
         self.sections = self.__break_in_sections() #divide the text nto sections
         self.demographics_data = self.__extract_fields(MedicalExtractor.FIELDS_TO_EXTRACT) #extract demographics data
+        self.emergency_data = self.__extract_emergency_data() #extract emergency data
         self.medicines = self.__extract_medicines_regex() #extract medicines data
         self.output = self.__return_extracted_data() #final output 
         
@@ -81,10 +82,10 @@ class MedicalExtractor:
         """ Tags sections based on certain keywords. """
 
         sections = MedicalExtractor.DOCUMENT_SECTIONS
-        for section in sections:
+        for section,threshold in sections:
             tag = 'UNCATEGORIZED'
             pattern = self.__make_regex_pattern(nested=False,keyword=section)
-            if len(re.findall(pattern,para))>2: 
+            if len(re.findall(pattern,para))>threshold: 
                 tag = section
                 break
         return tag
@@ -105,7 +106,8 @@ class MedicalExtractor:
         else:
             pattern = search_dict
             raw_string = r"{}".format(pattern)
-        logger.info(f'keyword:{keyword}|pattern:{raw_string}')
+        if nested:
+            logger.info(f'keyword:{keyword}|pattern:{raw_string}')
         regex_str = re.compile(raw_string,re.IGNORECASE|re.DOTALL|re.MULTILINE) #add flags and make a regex pattern
         return regex_str
     
@@ -198,11 +200,21 @@ class MedicalExtractor:
         logger.info(medicines)
         return medicines #returning medicines caught by regex
     
+    def __extract_emergency_data(self):
+
+        """ Collect emergency conditions/procedures mentioned in the document. """
+
+        result = [each['text'] for each in self.sections if each['tag']=='EMERGENCY_SECTION']
+        return '\n'.join(result)
+
+
+
+    
     def __return_extracted_data(self):
 
         """ Returning output data in a categorized manner. """
 
-        return {'demographics':self.demographics_data,'medicines':self.medicines}
+        return {'demographics':self.demographics_data,'emergency':self.emergency_data,'medicines':self.medicines}
     
 
             

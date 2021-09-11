@@ -4,7 +4,8 @@
       "LINE":"\\n+"
    },
    "MEDICINE_SECTION":"\\bTab\\s*\\.*|\\bSyp\\s*\\.*|\\bInj\\s*\\.*|\\bCap\\s*\\.*",
-   "DEMOGRAPHICS":"(mrn|REG\\s*\\/\\s*IP\\s*NO|Hospital\\s*[\\s*\\-]?\\s*ID)|(Date\\s*of\\s*Discharge|Discharge\\s*Date|Discharged\\s*On)|(Date\\s*of\\s*Birth)|(Age)|(Patient\\s*Name\\s*\\n*|Name\\s*\\n*)",
+   "DEMOGRAPHICS_SECTION":"(mrn|REG\\s*\\/\\s*IP\\s*NO|Hospital\\s*[\\s*\\-]?\\s*ID)|(Date\\s*of\\s*Discharge|Discharge\\s*Date|Discharged\\s*On)|(Date\\s*of\\s*Birth)|(Age)|(Patient\\s*Name\\s*\\n*|Name\\s*\\n*)",
+   "EMERGENCY_SECTION":"Contact\\s*in\\s*Emergency|In\\s*case\\s*of\\s*emergency",
    "MRN":{
       "SEARCH_KEY":"(?P<KEY>mrn|REG\\s*\\/\\s*IP\\s*NO|Hospital\\s*[\\s*\\-]?\\s*ID)",
       "SEARCH_DELIMITER":"\\s*(No|num|number)?\\s*\\n*:*",
