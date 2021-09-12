@@ -36,7 +36,7 @@ class MedicalExtractor:
         self.medicines = self.__extract_medicines_regex() #extract medicines data
         self.output = self.__return_extracted_data() #final output 
         
-    def __load_regex(self):
+    def __load_regex(self) -> dict:
 
         """ Loading the regex mapper file as a dictionary. """
 
@@ -58,7 +58,7 @@ class MedicalExtractor:
         
         return result #return extracted text
     
-    def __break_in_sections(self):
+    def __break_in_sections(self) -> list:
 
         """ Break the text into sections depending on the delimiter. """
 
@@ -77,7 +77,7 @@ class MedicalExtractor:
         logger.info(f'Tokenised Text : {result}')
         return result #return a list of sections
     
-    def __tag_sections(self,para:str):
+    def __tag_sections(self,para:str) -> str:
 
         """ Tags sections based on certain keywords. """
 
@@ -111,7 +111,7 @@ class MedicalExtractor:
         regex_str = re.compile(raw_string,re.IGNORECASE|re.DOTALL|re.MULTILINE) #add flags and make a regex pattern
         return regex_str
     
-    def __get_params(self,key_to_search,is_nested=True):
+    def __get_params(self,key_to_search,is_nested=True) -> str:
 
         """ Extract the required field from the text. """
 
@@ -135,7 +135,7 @@ class MedicalExtractor:
         return retval #returning value for the key
     
 
-    def __extract_fields(self,fields_to_extract:list):
+    def __extract_fields(self,fields_to_extract:list) -> dict:
 
         """ Driver function to extract all the fields. """
 
@@ -148,7 +148,7 @@ class MedicalExtractor:
         logger.info(f'Extracted data : {result}')
         return result #return all caught demographics data
     
-    def __scrape_medicine(self,medicine:dict):
+    def __scrape_medicine(self,medicine:dict) -> dict:
 
         """ Getting brand name,generic name mapping for a medicine. """
 
@@ -160,7 +160,7 @@ class MedicalExtractor:
         del medicine['NAME']
         return medicine
     
-    def __refine_medicines(self,medicines:list):
+    def __refine_medicines(self,medicines:list) -> list:
 
         """ Cleanup the medicines extracted. """
 
@@ -180,7 +180,7 @@ class MedicalExtractor:
         return result #return cleaned up medicines
 
     
-    def __extract_medicines_regex(self):
+    def __extract_medicines_regex(self) -> list:
 
         """ Extract Medicines by regex method. """
 
@@ -200,7 +200,7 @@ class MedicalExtractor:
         logger.info(medicines)
         return medicines #returning medicines caught by regex
     
-    def __extract_emergency_data(self):
+    def __extract_emergency_data(self) -> str:
 
         """ Collect emergency conditions/procedures mentioned in the document. """
 
@@ -210,7 +210,7 @@ class MedicalExtractor:
 
 
     
-    def __return_extracted_data(self):
+    def __return_extracted_data(self) -> dict:
 
         """ Returning output data in a categorized manner. """
 

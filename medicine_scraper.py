@@ -8,15 +8,26 @@ logger = logging.getLogger(__name__)
     
 class MedicineScraper:
 
+    """ Class to gather metadata about a medicine using scraping techniques. """
+
     def __init__(self,name):
+
+        """ Initialize the search string and gather metadata around it. """
+
         self.search_string = name
         self.brand_name,self.generic_name,self.isExact = self.__scraper_fine()
     
     def return_data(self):
+
+        """ return (brand_name,generic_name,isExact) for a search query"""
+
         return self.brand_name,self.generic_name,self.isExact
 
 
     def __extraction_from_raw_search(self,content):
+
+        """ extract data using heuristics from raw scraped data. """
+
         brand_name,generic_name= 'N/A',''
         soup = BeautifulSoup(content, 'html5lib')
         text = str(soup)
@@ -44,6 +55,9 @@ class MedicineScraper:
         return brand_name,generic_name,isExact
 
     def __extraction_from_scraper_fine(self,content):
+
+        """ extract metadata from scraped data. """
+
         soup = BeautifulSoup(content, 'html5lib')
         dump = str(soup)
         extract = soup.find("meta",attrs={'name':'DESCRIPTION'})
@@ -69,6 +83,9 @@ class MedicineScraper:
 
     
     def __raw_search(self):
+
+        """ go for nearest search based on query string. """
+
         logger.info(f'Raw Search : {self.search_string}')
         url = 'https://www.mims.com/india/drug/search?q=' + self.search_string
         try:
@@ -81,6 +98,9 @@ class MedicineScraper:
         return brand_name,generic_name,isExact
 
     def __scraper_fine(self): 
+
+        """ go for exact search for the query string. """
+
         logger.info(f'Fine scraping : {self.search_string}')
         url = 'https://www.mims.com/india/drug/info/' + self.search_string
         try:

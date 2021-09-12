@@ -9,6 +9,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 class HandleDocx:
+
+    """ Class to handle docx file and extract text as string data for further processing. """
+
     def __init__(self,filedocx):
         self.fileobj = filedocx
     
