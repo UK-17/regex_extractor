@@ -1,12 +1,15 @@
+from os import error
 import re #regex library
 import json #JSON library
 from pathlib import Path #to load the files
 import logging #logger
 import logging.config
-from typing import Pattern #logger parameters
-import docx #handling docx file
-from handle_docx import HandleDocx #custom class to extract text from docx file
-from medicine_scraper import MedicineScraper
+import textract
+from textract.parsers import process#custom class to extract text from docx file
+from core.medicine_scraper import MedicineScraper
+import sys
+sys.path.insert(0,'..')
+from utils.utils import FileOperations,ErrorHandler
 
 
 """ Importing logger at the top level. """
@@ -19,7 +22,7 @@ class MedicalExtractor:
 
     """ Extracts demographic/medicine data from a medical document. """
 
-    REGEX_FILE_PATH = "regex_mapping.json" #regex file path
+    REGEX_FILE_PATH = str(FileOperations.get_project_root())+"/data/regex_mapping.json" #regex file path
     FIELDS_TO_EXTRACT = ['PATIENT_NAME','AGE','GENDER','MRN','DATE_OF_DISCHARGE','DOB','DIAGNOSIS'] #demographics field that we extract
     DOCUMENT_SECTIONS = [('MEDICINE_SECTION',2),('DEMOGRAPHICS_SECTION',2),('EMERGENCY_SECTION',0)] #important sections of the document and threshold value for keywords to catch.
 
@@ -28,7 +31,7 @@ class MedicalExtractor:
         """ Initializing the Extractor by passing document. """
 
         self.file_path = None #file path of the document passed
-        self.text = self.__docx_to_str(kwargs) #text extracted from file/input string
+        self.text = self.__docx_to_str(kwargs) #text extracted from file/input stringsss
         self.regex_mapper = self.__load_regex() #load the regex from file
         self.sections = self.__break_in_sections() #divide the text nto sections
         self.demographics_data = self.__extract_fields(MedicalExtractor.FIELDS_TO_EXTRACT) #extract demographics data
@@ -54,7 +57,10 @@ class MedicalExtractor:
             result = params['input_str']
         elif 'input_file' in params.keys() and params['input_file'] is not None: #need to parse a docx file
             file_path = params['input_file'] #filepath to the file
-            result  = HandleDocx(docx.Document(params['input_file'])).load_data() #extract text from document
+            result  = textract.process(file_path) #extract text from document
+
+        if type(result)==bytes:
+            result = str(result,'utf-8')    
         
         return result #return extracted text
     
@@ -117,8 +123,9 @@ class MedicalExtractor:
 
         try:
             searchstr = self.__make_regex_pattern(nested=is_nested,keyword=key_to_search) #fetch the regex pattern
-        except:
-            logger.critical(f"{key_to_search} not defined in regex_mapping.json")
+        except Exception as e:
+            error = ErrorHandler(e,f"{key_to_search} not defined in regex_mapping.json")
+            error.log_error()
             return "N/A"
 
         try:
@@ -127,8 +134,8 @@ class MedicalExtractor:
             retval = retval[0]
             retval = retval[key_to_search] #caught data for the key
         except Exception as e:
-            logger.error(e)
-            logger.critical('{} not found'.format(key_to_search))
+            error = ErrorHandler(e,f'{key_to_search} not found')
+            error.log_error()
             retval='N/A'
         
         logger.info("Param Returned:{} Value is :{}".format(key_to_search,retval))
@@ -186,7 +193,12 @@ class MedicalExtractor:
 
         medicines = list()
         medicine_pattern = self.__make_regex_pattern(keyword='MEDICINE',nested=False) #medicine regex pattern
-        medicines_section = [each['text'] for each in self.sections if each['tag']=='MEDICINE_SECTION'][0]
+        try:
+            medicines_section = [each['text'] for each in self.sections if each['tag']=='MEDICINE_SECTION'][0]
+        except Exception as e:
+            error = ErrorHandler(e,'No Medical section found. Searching for medicines in the entire document.')
+            error.log_error()
+            medicines_section = self.text
         retval = re.finditer(medicine_pattern,medicines_section) #match objects for all caught medicines
         for match in retval: #structure medicine into list of dictionaries
             logger.info(match)
@@ -220,9 +232,10 @@ class MedicalExtractor:
             
 
 if __name__=="__main__":
-    file_path = "sample_files/angio.docx"
+    file_path = "/home/vesper/Projects/regex_extractor/data/sample_files/angio.docx"
     ext_obj = MedicalExtractor(input_file=file_path)
     logger.info(f'OUTPUT : {ext_obj.output}')
+    print(ext_obj.output)
 
 
         

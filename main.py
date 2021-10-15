@@ -1,7 +1,7 @@
 #using FastAPI to extend functionality as a web service
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes import router as router
+from core.routes import router as router
 
 
 #setting up logger and logging profiles
