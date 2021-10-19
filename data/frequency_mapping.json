@@ -1,0 +1,9 @@
+{
+    "0-0-1":["Once Daily - Night"],
+    "0-1-0":["Once Daily - Noon"],
+    "1-0-0":["Once Daily - Morning"],
+    "0-1-1":["Twice Daily - Noon and Night"],
+    "1-0-1":["Twice Daily - Morning and Night"],
+    "1-1-0":["Twice Daily - Morning and Noon"],
+    "1-1-1":[]
+}

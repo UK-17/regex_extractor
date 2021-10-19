@@ -1,4 +1,4 @@
-from os import error
+import os
 import re #regex library
 import json #JSON library
 from pathlib import Path #to load the files
@@ -23,6 +23,7 @@ class MedicalExtractor:
     """ Extracts demographic/medicine data from a medical document. """
 
     REGEX_FILE_PATH = str(FileOperations.get_project_root())+"/data/regex_mapping.json" #regex file path
+    FREQUENCY_MAPPING = str(FileOperations.get_project_root())+"/data/frequency_mapping.json" #frequency mapping file path
     FIELDS_TO_EXTRACT = ['PATIENT_NAME','AGE','GENDER','MRN','DATE_OF_DISCHARGE','DOB','DIAGNOSIS'] #demographics field that we extract
     DOCUMENT_SECTIONS = [('MEDICINE_SECTION',2),('DEMOGRAPHICS_SECTION',2),('EMERGENCY_SECTION',0)] #important sections of the document and threshold value for keywords to catch.
 
@@ -31,7 +32,7 @@ class MedicalExtractor:
         """ Initializing the Extractor by passing document. """
 
         self.file_path = None #file path of the document passed
-        self.text = self.__docx_to_str(kwargs) #text extracted from file/input stringsss
+        self.text = self.__extract_text(kwargs) #text extracted from file/input stringsss
         self.regex_mapper = self.__load_regex() #load the regex from file
         self.sections = self.__break_in_sections() #divide the text nto sections
         self.demographics_data = self.__extract_fields(MedicalExtractor.FIELDS_TO_EXTRACT) #extract demographics data
@@ -49,18 +50,14 @@ class MedicalExtractor:
         return mapper #return regex mapper
 
     
-    def __docx_to_str(self,params:dict) -> str:
+    def __extract_text(self,params:dict) -> str:
 
         """ Extract data from the document and convert it to a string. """
 
-        if 'input_str' in params.keys() and params['input_str'] is not None: #need to parse string
-            result = params['input_str']
-        elif 'input_file' in params.keys() and params['input_file'] is not None: #need to parse a docx file
-            file_path = params['input_file'] #filepath to the file
-            result  = textract.process(file_path) #extract text from document
+        file_path = params['input_file'] #filepath to the file
+        result  = textract.process(file_path) #extract text from document
 
-        if type(result)==bytes:
-            result = str(result,'utf-8')    
+        if type(result)==bytes:result = str(result,'utf-8')    
         
         return result #return extracted text
     
@@ -173,7 +170,7 @@ class MedicalExtractor:
 
         result = list()
         for index,medicine in enumerate(medicines):
-                medicine['COMMENTS'] = self.text[medicine['span'][1]:medicines[index+1]['span'][0]].strip() if index!=len(medicines)-1 else '' #adding uncategorized information as comments
+                medicine['COMMENTS'] = self.medicines_section[medicine['span'][1]:medicines[index+1]['span'][0]-1].strip() if index!=len(medicines)-1 else '' #adding uncategorized information as comments
                 del medicine['span']
                 if medicine['DOSAGE'] is None and medicine['FREQUENCY'] is not None: #making frequency and dosage into understandable format
                     temp = medicine['FREQUENCY'].split('-')
@@ -182,9 +179,30 @@ class MedicalExtractor:
                 
                 medicine = { k:('N/A' if v is None else v.strip()) for k, v in medicine.items()} #uncaught data is returned as 'N/A'
                 medicine = self.__scrape_medicine(medicine)
+                medicine = self.__correct_medicine_metadata(medicine)
                 result.append(medicine)
                     
         return result #return cleaned up medicines
+    
+    def __correct_medicine_metadata(self,medicine:dict):
+
+        """ Categorize comments in one of the fields. """
+
+        # correcting frequency term.
+        comments = medicine['COMMENTS']
+        frequency = medicine['FREQUENCY']
+        regex_file = Path(MedicalExtractor.FREQUENCY_MAPPING) #define the frequency file
+        with open(regex_file, "r") as read_file: #open the frequency file
+            frequency_mapper = json.load(read_file) #load the frequency file as a dictionary
+            if frequency == 'N/A' and len(comments)>0:
+                for term,synonyms in frequency_mapper.items():
+                    for each in synonyms:
+                        logger.info(f'Comments:{comments}|matching with : {each}')
+                        if each.lower() in comments.lower():
+                            frequency = term       
+        medicine['FREQUENCY'] = frequency
+
+        return medicine
 
     
     def __extract_medicines_regex(self) -> list:
@@ -194,12 +212,12 @@ class MedicalExtractor:
         medicines = list()
         medicine_pattern = self.__make_regex_pattern(keyword='MEDICINE',nested=False) #medicine regex pattern
         try:
-            medicines_section = [each['text'] for each in self.sections if each['tag']=='MEDICINE_SECTION'][0]
+            self.medicines_section = [each['text'] for each in self.sections if each['tag']=='MEDICINE_SECTION'][0]
         except Exception as e:
             error = ErrorHandler(e,'No Medical section found. Searching for medicines in the entire document.')
             error.log_error()
-            medicines_section = self.text
-        retval = re.finditer(medicine_pattern,medicines_section) #match objects for all caught medicines
+            self.medicines_section = self.text
+        retval = re.finditer(medicine_pattern,self.medicines_section) #match objects for all caught medicines
         for match in retval: #structure medicine into list of dictionaries
             logger.info(match)
             span = match.span()
@@ -232,6 +250,7 @@ class MedicalExtractor:
             
 
 if __name__=="__main__":
+    print(os.curdir())
     file_path = "/home/vesper/Projects/regex_extractor/data/sample_files/angio.docx"
     ext_obj = MedicalExtractor(input_file=file_path)
     logger.info(f'OUTPUT : {ext_obj.output}')

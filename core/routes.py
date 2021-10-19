@@ -2,6 +2,7 @@ import os
 from core.medical_document_parser import MedicalExtractor
 from fastapi import APIRouter
 from fastapi import File,UploadFile
+import json
 
 from utils.utils import FileOperations,ErrorHandler
 from fastapi import APIRouter, Request, HTTPException
@@ -34,6 +35,8 @@ def parse_medical_document(request:Request,file:  UploadFile = File(...)):
         
         extract_obj = MedicalExtractor(input_file=temp_file)
         result = extract_obj.output
+        logger.info(f'Final Output:\n{json.dumps(result,indent=3)}')
+        logger.info(f'Parsing Done.')
         return result
     
     except Exception as e:
