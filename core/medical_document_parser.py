@@ -5,9 +5,10 @@ from pathlib import Path #to load the files
 import logging #logger
 import logging.config
 import textract
-from textract.parsers import process#custom class to extract text from docx file
+from core.text_extractor import TextExtractor
 from core.medicine_scraper import MedicineScraper
 import sys
+from fastapi import HTTPException
 sys.path.insert(0,'..')
 from utils.utils import FileOperations,ErrorHandler
 
@@ -32,13 +33,61 @@ class MedicalExtractor:
         """ Initializing the Extractor by passing document. """
 
         self.file_path = None #file path of the document passed
-        self.text = self.__extract_text(kwargs) #text extracted from file/input stringsss
-        self.regex_mapper = self.__load_regex() #load the regex from file
-        self.sections = self.__break_in_sections() #divide the text nto sections
-        self.demographics_data = self.__extract_fields(MedicalExtractor.FIELDS_TO_EXTRACT) #extract demographics data
-        self.emergency_data = self.__extract_emergency_data() #extract emergency data
-        self.medicines = self.__extract_medicines_regex() #extract medicines data
-        self.output = self.__return_extracted_data() #final output 
+
+        try:
+            self.text = self.__extract_text(kwargs) #text extracted from file
+        except Exception as e:
+            msg = 'Error while extracting text from the document'
+            logger.error(e)
+            logger.critical(msg)
+            raise HTTPException(status_code=500, detail=msg)
+
+        try:
+            self.sections = self.__break_in_sections() #divide the text into sections
+        except Exception as e:
+            msg = 'Could not break the text into sections.'
+            logger.error(e)
+            logger.critical(msg)
+        
+        try:
+            self.regex_mapper = self.__load_regex() #load the regex from file
+        except Exception as e:
+            msg = 'Regex mapping file is missing.'
+            logger.error(e)
+            logger.critical(msg)
+            raise HTTPException(status_code=501,detail=msg)
+        
+        try:
+            self.demographics_data = self.__extract_fields(MedicalExtractor.FIELDS_TO_EXTRACT) #extract demographics data
+        except Exception as e:
+            msg='Error while extracting demographics data.'
+            logger.error(e)
+            logger.critical(msg)
+            self.demographics_data = None
+
+        try:    
+            self.emergency_data = self.__extract_emergency_data() #extract emergency data
+        except Exception as e:
+            msg='Error while extracting emergency data.'
+            logger.error(e)
+            logger.critical(msg)
+            self.emergency_data = None
+        
+        try:
+            self.medicines = self.__extract_medicines_regex() #extract medicines data
+        except Exception as e:
+            msg='Error while extracting medicines.'
+            logger.error(e)
+            logger.critical(msg)
+            self.medicines=None
+        
+        try:
+            self.output = self.__return_extracted_data() #final output 
+        except Exception as e:
+            msg='Error while generating output.'
+            logger.error(e)
+            logger.critical(msg)
+            self.output = None
         
     def __load_regex(self) -> dict:
 
@@ -55,10 +104,8 @@ class MedicalExtractor:
         """ Extract data from the document and convert it to a string. """
 
         file_path = params['input_file'] #filepath to the file
-        result  = textract.process(file_path) #extract text from document
-
-        if type(result)==bytes:result = str(result,'utf-8')    
-        
+        processed_text = TextExtractor(file_path=file_path)
+        result = processed_text.extracted_text
         return result #return extracted text
     
     def __break_in_sections(self) -> list:
@@ -197,7 +244,6 @@ class MedicalExtractor:
             if frequency == 'N/A' and len(comments)>0:
                 for term,synonyms in frequency_mapper.items():
                     for each in synonyms:
-                        logger.info(f'Comments:{comments}|matching with : {each}')
                         if each.lower() in comments.lower():
                             frequency = term       
         medicine['FREQUENCY'] = frequency
