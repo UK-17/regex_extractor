@@ -36,18 +36,12 @@ class MedicalExtractor:
 
         try:
             self.text = self.__extract_text(kwargs) #text extracted from file
+            logger.info(f'EXTRACTED TEXT : {self.text}')
         except Exception as e:
             msg = 'Error while extracting text from the document'
             logger.error(e)
             logger.critical(msg)
             raise HTTPException(status_code=500, detail=msg)
-
-        try:
-            self.sections = self.__break_in_sections() #divide the text into sections
-        except Exception as e:
-            msg = 'Could not break the text into sections.'
-            logger.error(e)
-            logger.critical(msg)
         
         try:
             self.regex_mapper = self.__load_regex() #load the regex from file
@@ -56,6 +50,13 @@ class MedicalExtractor:
             logger.error(e)
             logger.critical(msg)
             raise HTTPException(status_code=501,detail=msg)
+
+        try:
+            self.sections = self.__break_in_sections() #divide the text into sections
+        except Exception as e:
+            msg = 'Could not break the text into sections.'
+            logger.error(e)
+            logger.critical(msg)
         
         try:
             self.demographics_data = self.__extract_fields(MedicalExtractor.FIELDS_TO_EXTRACT) #extract demographics data
@@ -104,7 +105,9 @@ class MedicalExtractor:
         """ Extract data from the document and convert it to a string. """
 
         file_path = params['input_file'] #filepath to the file
-        processed_text = TextExtractor(file_path=file_path)
+        if '.docx' in file_path:method='DEFAULT'
+        if '.pdf' in file_path:method='PDF_T'
+        processed_text = TextExtractor(file_path=file_path,method=method)
         result = processed_text.extracted_text
         return result #return extracted text
     

@@ -6,6 +6,7 @@ class TextExtractor:
     def __init__(self,file_path,method='DEFAULT') -> None:
         self.filepath = file_path
         if method=='DEFAULT':self.extracted_text = self.textract_default()
+        if method=='PDF_T':self.extracted_text = self.textract_pdf()
 
     def textract_default(self):
         result  = textract.process(self.filepath) #extract text from document
@@ -13,10 +14,10 @@ class TextExtractor:
         return result #return extracted text
 
 
-    def textract_pdf(self,filename:str):
-        text = textract.process(filename=file_path,method='tesseract')
-        text = str(text,'utf-8')
-        return text
+    def textract_pdf(self):
+        text = textract.process(filename=self.filepath,method='tesseract')
+        if type(text)==bytes:result = str(text,'utf-8')
+        return result
 
     def pdfplumber_extraxt(self,filename:str):
         with pdfplumber.open(filename) as pdf:
