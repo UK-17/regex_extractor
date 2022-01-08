@@ -41,5 +41,5 @@
       "SEARCH_DELIMITER":"\\s*:*",
       "SEARCH_PATTERN":"(\\s*|\\n)(?P<GENDER>\\w*)"
    },
-   "MEDICINE":"(\\b(?P<FORM>Tab\\s*\\.*|Syp\\s*\\.*|Inj\\s*\\.*|Cap\\s*\\.*)\\s*(?P<NAME>\\w+\\s*\\D*\\s*\\D*)\\s*(?P<DOSAGE>(\\d*(.\\d+)?)\\s*(mg|ml|unit)\\s+)?\\s*(?P<FREQUENCY>\\S*-\\S*-\\S*(-\\d*)?)?\\s*(?P<DURATION>x?\\s*(\\d+)\\s*days|x?\\s*continue|x?\\s*to\\s*continue)?)"
+   "MEDICINE":"(\\b(?P<FORM>Tab\\s*\\.*|Sy[pr]\\s*\\.*|Inj\\s*\\.*|Cap\\s*\\.*)\\s*(?P<NAME>\\w+\\s*\\D*\\s*\\D*)\\s*(?P<DOSAGE>(\\d*(.\\d+)?)\\s*(mg|ml|unit)\\s+)?\\s*(?P<FREQUENCY>\\S*-\\S*-\\S*(-\\d*)?)?\\s*(?P<DURATION>x?\\s*(\\d+)\\s*days|x?\\s*continue|x?\\s*to\\s*continue)?)"
 }
